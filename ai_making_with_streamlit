@@ -1,0 +1,41 @@
+import streamlit as st
+import openai
+import random
+import time
+
+st.write("안녕 나는 서울교대 앱프로그래밍 수업 전용 챗봇이야! 반가워! 무엇이든 물어봐!")
+
+st.caption("단, 수업에서 다룬 내용만 답변할 수 있어요.")
+
+# Set OpenAI API key from Streamlit secrets
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+
+if "messages" not in st.session_state:
+    st.session_state.messages = [{"role": "assistant", "content": "안녕 나는 서울교대 앱프로그래밍 수업 전용 챗봇이야! 반가워! 무엇이든 물어봐!"}]
+
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+if prompt := st.chat_input("무엇이든 물어봐!"):
+    # Display user message in chat message container
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # Display assistant response in chat message container
+    with st.chat_message("assistant"):
+        message_placeholder = st.empty()
+        full_response = ""
+        # 이전 대화 내용을 모두 포함하여 API 호출
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages],
+            stream=True
+        )
+        for chunk in response:
+            if chunk.choices[0].delta.get("content"):
+                full_response += chunk.choices[0].delta.content
+                message_placeholder.markdown(full_response + "▌")
+        message_placeholder.markdown(full_response)
+    st.session_state.messages.append({"role": "assistant", "content": full_response})

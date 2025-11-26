@@ -1,0 +1,7 @@
+# Secrets and API keys
+*.txt
+.streamlit/secrets.toml
+
+# Python cache
+__pycache__/
+
