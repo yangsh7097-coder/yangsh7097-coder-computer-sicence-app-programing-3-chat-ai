@@ -1,0 +1,6 @@
+[theme]
+primaryColor="#58a6ff" # GitHub의 링크/액센트 블루 색상
+backgroundColor="#0d1117" # GitHub의 어두운 배경색
+secondaryBackgroundColor="#161b22" # 컨테이너, 채팅 입력창 등에 사용될 약간 밝은 배경색
+textColor="#c9d1d9" # GitHub의 기본 텍스트 색상
+font="sans serif" # 깔끔한 기본 산세리프 폰트

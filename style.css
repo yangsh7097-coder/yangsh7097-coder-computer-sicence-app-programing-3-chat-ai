@@ -1,0 +1,88 @@
+/* style.css */
+
+/* 전체적인 배경 및 폰트 설정 */
+body {
+    background-color: #0E1117; /* GitHub 다크 모드 배경 */
+    color: #FAFAFA; /* 밝은 텍스트 */
+    font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; /* 깔끔한 폰트 */
+}
+
+/* Streamlit 기본 배경색 오버라이드 (config.toml과 함께 작동) */
+.stApp {
+    background-color: #0E1117;
+}
+
+/* 채팅 메시지 컨테이너의 기본 스타일 */
+.stChatMessage {
+    background-color: #262730; /* 채팅 메시지 배경 */
+    border-radius: 10px;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    border: 1px solid #30333b;
+    margin-bottom: 1rem; /* 메시지 간 간격 */
+}
+
+/* 사용자 메시지 (오른쪽 정렬, 파란색 배경) */
+.stChatMessage[data-testid="stChatMessage"][data-message-is-user="true"] {
+    background-color: #005cc5; /* GitHub 파란색 */
+    color: white;
+    margin-left: auto; /* 오른쪽 정렬 */
+    border-bottom-right-radius: 2px; /* 꼬리처럼 보이게 */
+}
+
+/* 봇 메시지 (왼쪽 정렬, 밝은 회색 배경) */
+.stChatMessage[data-testid="stChatMessage"][data-message-is-user="false"] {
+    background-color: #30363d; /* GitHub 회색 */
+    color: #c9d1d9;
+    margin-right: auto; /* 왼쪽 정렬 */
+    border-bottom-left-radius: 2px; /* 꼬리처럼 보이게 */
+}
+
+/* 코드 블록 스타일 */
+pre {
+    background-color: #1E1E1E !important;
+    border-radius: 8px !important;
+    padding: 1rem !important;
+    font-size: 0.9rem !important;
+    border: 1px solid #444;
+    overflow-x: auto; /* 긴 코드 블록 스크롤 */
+}
+
+/* 버튼 스타일 */
+.stButton>button {
+    border-radius: 20px;
+    border: 1px solid #4f8bf9;
+    background-color: #4f8bf9;
+    color: white;
+    transition: all 0.2s ease-in-out;
+    padding: 0.5rem 1rem; /* 버튼 패딩 조정 */
+}
+
+.stButton>button:hover {
+    border: 1px solid #4f8bf9;
+    background-color: transparent;
+    color: #4f8bf9;
+}
+
+/* 입력창 스타일 */
+.stTextInput>div>div>input,
+.stTextArea>div>div { /* text_area도 포함 */
+    background-color: #262730;
+    border: 1px solid #30333b;
+    border-radius: 8px;
+    color: #c9d1d9; /* 입력 텍스트 색상 */
+}
+
+/* st.chat_input 컨테이너 스타일 */
+.stChatInputContainer {
+    background-color: #161b22; /* secondaryBackgroundColor와 유사하게 */
+    border-top: 1px solid #30333b;
+    padding: 1rem;
+}
+
+/* 토스트 메시지 (피드백 제출 시 나타나는 메시지) */
+.stToast {
+    background-color: #238636; /* GitHub 초록색 */
+    color: white;
+    border-radius: 8px;
+}

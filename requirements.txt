@@ -1,7 +1,2 @@
 streamlit
-feedparser
-requests
-beautifulsoup4
-transformers
-sentencepiece
-torch
+google-generativeai

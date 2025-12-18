@@ -1,57 +1,257 @@
+# [목적] 웹 애플리케이션 구축을 위한 Streamlit 라이브러리를 불러옵니다.
+# [결과] 파이썬 코드만으로 웹 페이지의 UI와 기능을 구현할 수 있게 됩니다.
 import streamlit as st
+# [목적] Google의 거대 언어 모델(Gemini)을 사용하여 AI 챗봇 기능을 구현하기 위함입니다.
 import google.generativeai as genai
+# [목적] 데이터 처리 및 분석을 위해 Pandas를 사용합니다. (피드백 저장 시 활용해요.)
+import pandas as pd
+from datetime import datetime
+import os
 
-st.write("안녕 나는 서울교대 앱프로그래밍 수업 전용 챗봇이야! 반가워! 무엇이든 물어봐!")
+# --- 1. 페이지 설정 ---
+# [목적] 초등학교 6학년 학생들의 흥미를 유발하기 위해 '탐정' 컨셉으로 페이지 설정을 초기화합니다.
+# [결과] 브라우저 탭 제목이 우리 아이들이 흥미를 느낄만한 "6학년 데이터 탐정"으로 바뀌고, 돋보기 아이콘(🔍)이 표시됩니다.
+st.set_page_config(
+    page_title="6학년 데이터 탐정 🕵️‍♀️",
+    page_icon="🔍",
+    layout="centered",
+    initial_sidebar_state="auto"
+)
 
-st.caption("단, 수업에서 다룬 내용만 답변할 수 있어요.")
+# --- 2. 커스텀 CSS ---
+# [목적] 별도의 CSS 파일을 로드하여 앱 전반의 디자인(폰트, 색상, 여백 등)을 일관성 있게 꾸밉니다.(물론 스트림릿 앱 내부 설정으로 색상은 변경 가능합니다.)
+# [결과] 'style.css'에 정의된 스타일이 적용되어, 기본 디자인보다 더 깔끔하고 몰입감 있는 화면이 됩니다.
+def local_css(file_name):
+    if os.path.exists(file_name):
+        with open(file_name, encoding="utf-8") as f:
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-# Configure Google Gemini API key from Streamlit secrets
-genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+local_css("style.css")
 
-# Function to translate role from 'assistant' to 'model'
-def translate_role_for_gemini(role):
-    if role == "assistant":
-        return "model"
+# [목적] 메인 화면의 콘텐츠 폭을 조절하여, 학교 디벗 패들릿 화면에서도 글자가 너무 퍼져 보이지 않게 합니다.(이것도 물론 스트림릿 앱 내부 기능으로 줄일 수 있습니다.)
+# [결과] 텍스트와 채팅창이 화면 중앙에 적절한 너비로 배치되어 가독성이 높아집니다.
+st.markdown("""
+<style>
+    .main .block-container {
+        max-width: 800px;
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Google Gemini API 키 설정
+# [목적] 보안을 위해 소스 코드에 API 키를 직접 노출하지 않고, Streamlit의 Secrets 관리 기능을 사용합니다.(물론 API 키는 보안을 위해 환경변수로 설정하는 것이 좋습니다.)
+# [결과] GitHub에 코드를 올려도 API 키가 유출되지 않으며, 서버 환경에서 안전하게 키를 불러옵니다.
+if "GOOGLE_API_KEY" in st.secrets:
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+else:
+    st.error("Secrets에 GOOGLE_API_KEY를 설정해주세요.")
+
+# --- 3. 수업 내용 시스템 프롬프트 ---
+# [목적] AI에게 '6학년 정보 수업 보조 교사'라는 페르소나(역할)를 부여하고, 수업의 맥락을 학습시킵니다.
+# [결과] AI가 단순히 정답만 말하는 것이 아니라, 학생 수준에 맞춰 힌트를 주고 탐구 활동을 돕는 답변을 생성합니다.
+LESSON_CONTEXT = """
+# [AI 페르소나: 6학년 정보 수업 보조 교사 - 데이터 탐정]
+당신은 초등학교 6학년 정보 수업을 돕는 친절한 AI 보조 교사입니다. 
+학생들이 '디지털 데이터'와 '아날로그 데이터'의 차이를 이해하고, 이를 '트리 알고리즘'으로 분류하며, 사회 속 데이터의 유용성을 탐구하는 활동을 돕습니다.
+
+[수업 목표]
+데이터의 종류와 의미를 알고리즘에 따라 구별한 후 사회 속 데이터의 유용성을 이해할 수 있다.
+특히, 학생들이 세운 '분류 기준(질문)'이 명확한지 검증해주는 역할을 수행해야 합니다.
+
+[수업 활동 단계별 가이드]
+1. 활동 1 (개념 이해): 
+   - 아날로그 데이터: 시간이 흐르면서 변화하는 값을 '연속적'으로 표현 (예: 수은 온도계, 아날로그 시계, 용수철 저울).
+   - 디지털 데이터: 명확한 숫자나 문자로 표현되며 '이산적(뚝뚝 끊어지는)' 형태 (예: 전자 체온계, 디지털 시계, 전자 저울).
+   - 학생이 물건을 제시하면 정답을 바로 주지 말고, "값이 연속적으로 변하니, 아니면 숫자로 딱 떨어지니?"와 같은 발문으로 스스로 구분하게 유도하세요.
+
+2. 활동 2 (분류 게임 - 트리 알고리즘):
+   - 학생들은 이젤 패드에 트리 알고리즘을 그립니다. 당신은 그들의 '질문(분류 기준)'을 검증해줘야 합니다.
+   - 학생이 "이 질문 어때?"라고 물으면, 그 질문이 '예/아니오'로 명확히 나뉘는지 판단해 주세요.
+   - Bad Question: "예쁜가요?", "무거운가요?" (주관적임) -> 피드백: "사람마다 기준이 달라요. '1kg보다 무거운가요?'처럼 구체적으로 바꿔볼까요?"
+   - Good Question: "숫자로 표현되나요?", "전기를 사용하나요?"
+   - 학생이 분류 기준을 정했을 때, "왜 그 기준을 가장 상위에 두었니?"라고 물어보며 학생의 논리적 이유(내면화 여부)를 확인해주세요.
+
+3. 활동 3 (사회 융합 - 데이터의 유용성):
+   - 기업: 이윤 추구를 위해 소비자 데이터를 활용함 (예: 맞춤형 광고).
+   - 정부: 공익 추구를 위해 국민 데이터를 활용함 (예: 교통 흐름 개선).
+   - "왜 기업이나 정부가 데이터를 모을까?"라는 질문을 통해 학생들이 사회적 의미를 찾도록 도와주세요.
+   - 기업의 데이터 활용에 대해 이야기할 때, 효율성뿐만 아니라 '개인정보 보호'나 '데이터 주권' 같은 윤리적 문제도 함께 생각해보도록 질문을 던져주세요.
+
+[당신의 역할 및 행동 지침]
+말투는 초등학교 6학년 수준에 맞춰 친절하고 이해하기 쉽게 설명하며, 정답을 바로 알려주기보다 힌트를 주어 사고를 확장시켜 주세요.
+학생들이 AI의 답변을 무비판적으로 수용하지 않도록, 가끔 "선생님이나 교과서 내용과도 비교해봐!"라고 조언해 주세요.
+또한, 학생이 논리적으로 타당한 질문(분류 기준)을 만들었을 때는 "정말 훌륭한 질문이야! 명확하게 잘 나누었어."와 같이 즉각적인 칭찬(강화)을 해주세요.
+항상 초등학생에게 적합한 건전하고 교육적인 언어를 사용하며, 편향되거나 유해한 내용은 절대 포함하지 마세요.
+학생이 질문을 수정하거나 다시 물어볼 때, "아까 질문이랑 어떻게 다르게 생각했니?" 또는 "왜 그렇게 생각했어?"라고 물어봐서 학생 스스로 생각하는 과정(메타인지)을 기록하게 도와주세요.
+"""
+
+# --- 4. 모델 로드 함수 ---
+@st.cache_resource
+# [목적] AI 모델을 매번 새로 불러오면 속도가 느려지므로, 한 번 불러온 모델을 메모리에 저장(캐싱)해둡니다.
+# [결과] 첫 실행 이후에는 모델 로딩 시간 없이 즉시 응답을 생성할 수 있어 앱 성능이 향상됩니다.
+def load_model():
+    model = genai.GenerativeModel(
+        model_name='gemini-2.5-flash', 
+        system_instruction=LESSON_CONTEXT 
+    )
+    return model
+
+# --- 5. 피드백 저장 함수 (변수명 chat_log로 변경) ---
+# [목적] 학생들의 반응(좋아요/아쉬워요)과 구체적인 피드백을 수집하여 수업 개선 자료로 활용하기 위함입니다.
+# [결과] 'feedback.csv' 파일에 날짜, 질문, 답변, 평가 내용이 자동으로 한 줄씩 추가됩니다.
+def save_feedback(message_index, rating, feedback_text=""):
+    # chat_log를 사용하도록 수정
+    if message_index > 0:
+        user_question = st.session_state.chat_log[message_index - 1]['content']
     else:
-        return role
+        user_question = "" 
 
-if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "안녕 나는 서울교대 앱프로그래밍 수업 전용 챗봇이야! 반가워! 무엇이든 물어봐!"}]
+    ai_answer = st.session_state.chat_log[message_index]['content']
 
-for message in st.session_state.messages:
-    # For Gemini, the "assistant" role is called "model"
-    if message["role"] == "assistant":
-        message["role"] = "model"
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+    feedback_data = {
+        "timestamp": [datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
+        "user_question": [user_question],
+        "ai_answer": [ai_answer],
+        "rating": [rating],
+        "feedback_text": [feedback_text]
+    }
+    df = pd.DataFrame(feedback_data)
 
-if prompt := st.chat_input("무엇이든 물어봐!"):
-    # Display user message in chat message container
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
+    if os.path.exists("feedback.csv"):
+        df.to_csv("feedback.csv", mode='a', header=False, index=False, encoding='utf-8-sig')
+    else:
+        df.to_csv("feedback.csv", mode='w', header=True, index=False, encoding='utf-8-sig')
 
-    # Display assistant response in chat message container
-    with st.chat_message("assistant"):
-        message_placeholder = st.empty()
-        full_response = ""
+# [목적] Streamlit의 역할명('assistant')을 Gemini API가 이해하는 역할명('model')으로 변환합니다.
+def translate_role_for_gemini(role):
+    return "model" if role == "assistant" else role
 
-        # Initialize the Gemini model
-        model = genai.GenerativeModel('gemini-1.5-pro-latest')
+# --- 6. 사이드바 ---
+with st.sidebar:
+    # [목적] 메인 화면 외에 부가적인 기능(안내, 파일 다운로드 등)을 배치할 공간을 만듭니다.
+    st.header("🕵️‍♀️ 수업 도우미")
+    st.info("6학년 1반 친구들 환영합니다!\n데이터의 비밀을 함께 파헤쳐봐요.")
+    
+    # [기능 추가] 수업지도안 다운로드 버튼
+    # [목적] 물론 수업에서는 안쓰겠지만, 과제에서 특별히 수업계획을 제출해야 할 때 평가자(교수님)나 동료 교사가 이 앱의 교육적 활용 계획을 즉시 확인할 수 있도록 합니다.
+    # [결과] '수업지도안 다운로드' 버튼을 누르면 PDF 파일이 사용자 컴퓨터로 다운로드됩니다.
+    st.markdown("---")
+    st.subheader("📂 자료실")
+    
+    # [목적] 현재 실행 중인 파이썬 파일의 위치를 기준으로 lesson_plan.pdf 경로를 정확히 찾습니다.
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    lesson_file_path = os.path.join(current_dir, "lesson_plan.pdf")
+    
+    if os.path.exists(lesson_file_path):
+        with open(lesson_file_path, "rb") as f:
+            st.download_button(
+                label="📄 수업지도안 다운로드 (PDF)",
+                data=f,
+                file_name="6학년_정보수업_지도안.pdf",
+                mime="application/pdf"
+            )
+    else:
+        st.warning("수업지도안 파일이 준비되지 않았습니다.")
 
-        # Prepare messages for Gemini API, translating roles
-        gemini_messages = [
-            {"role": translate_role_for_gemini(m["role"]), "parts": [m["content"]]}
-            for m in st.session_state.messages
-        ]
+    if st.button("처음으로 돌아가기", use_container_width=True):
+        # [목적] 이전 대화 내용이 남지 않도록 대화 기록을 초기화하여 새로운 수업을 준비합니다.
+        # [결과] 화면이 새로고침되면서 채팅창이 깨끗하게 비워집니다.
+        st.session_state.chat_log = [] 
+        st.rerun()
+    
+    # 대화 내용 다운로드
+    # [목적] 학생들이 AI와 나눈 대화 내용을 텍스트 파일로 저장하여 포트폴리오나 복습 자료로 쓰게 합니다.
+    if st.session_state.get("chat_log"):
+        chat_history = "\n\n".join(
+            f"**{m['role'].capitalize()}**: {m['content']}" 
+            for m in st.session_state.chat_log
+        )
+        st.download_button(
+            label="오늘의 탐구 기록 저장",
+            data=chat_history.encode('utf-8'),
+            file_name="data_class_log.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
 
-        # Call the Gemini API with streaming
-        response = model.generate_content(gemini_messages, stream=True)
+# --- 7. 메인 UI ---
+st.title("🕵️‍♀️ 데이터 탐정 챗봇")
+st.caption("6학년 정보-사회 융합 수업: 디지털 vs 아날로그")
 
-        for chunk in response:
-            # Sometimes chunks can be empty, so we check for text
-            if chunk.text:
-                full_response += chunk.text
-                message_placeholder.markdown(full_response + "▌") # Typing effect
-        message_placeholder.markdown(full_response)
-    st.session_state.messages.append({"role": "model", "content": full_response})
+# [목적] 윤리적 고려사항(할루시네이션)을 반영하여, 학생들에게 AI 답변의 한계를 미리 알립니다.
+# [결과] 학생들이 AI를 맹신하지 않고 비판적으로 정보를 수용하는 태도를 갖게 됩니다.
+st.info("📢 **주의사항:** 탐정 조수(AI)도 가끔 실수를 할 수 있어요! 답변이 이상하면 꼭 선생님께 여쭤보거나 교과서를 확인해 보세요.")
+
+chat_container = st.container(height=500)
+
+with chat_container:
+    # [목적] 웹 앱이 새로고침되어도 대화 내용이 사라지지 않도록 'session_state'에 대화 기록을 저장합니다.
+    if "chat_log" not in st.session_state:
+        # [목적] 앱 접속 시 학생들에게 AI의 역할과 사용법을 안내하는 첫 인사를 건넵니다.
+        welcome_msg = "안녕! 나는 데이터 탐정 조수야. 🕵️\n\n**'아날로그'**와 **'디지털'**이 무엇인지 궁금하거나, **트리 알고리즘** 만드는 게 어려우면 나에게 물어봐 줘!"
+        st.session_state.chat_log = [{"role": "assistant", "content": welcome_msg}]
+
+    # [목적] 저장된 대화 기록을 순서대로 화면에 표시하여, 카카오톡처럼 대화가 이어지는 UI를 만듭니다.
+    for idx, message in enumerate(st.session_state.chat_log):
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+            if message["role"] == "assistant":
+                feedback_key_base = f"feedback_{idx}"
+                col1, col2, _ = st.columns([1, 1, 8])
+                with col1:
+                    if st.button("👍", key=f"{feedback_key_base}_like"):
+                        save_feedback(idx, "👍 좋았어요")
+                        st.toast("도움이 되었다니 다행이야! 😊")
+                with col2:
+                    if st.button("👎", key=f"{feedback_key_base}_dislike"):
+                        st.session_state[f"show_feedback_input_{idx}"] = True
+                
+                if st.session_state.get(f"show_feedback_input_{idx}"):
+                    feedback_text = st.text_area("어떤 점이 어려웠니?", key=f"{feedback_key_base}_text")
+                    if st.button("보내기", key=f"{feedback_key_base}_submit"):
+                        save_feedback(idx, "👎 아쉬워요", feedback_text)
+                        st.toast("의견 고마워! 더 열심히 공부할게. 🙇‍♂️")
+                        st.session_state[f"show_feedback_input_{idx}"] = False
+
+# --- 8. 챗봇 구동 로직 ---
+if prompt := st.chat_input("질문을 입력하세요..."):
+    # [목적] 사용자가 입력창에 질문을 넣으면, 이를 화면에 즉시 보여주고 대화 기록에 추가합니다.
+    st.session_state.chat_log.append({"role": "user", "content": prompt})
+    with chat_container:
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+    # [목적] AI에게 질문을 전달하고, 답변이 생성되는 과정을 실시간 스트리밍으로 보여줍니다.
+    with chat_container:
+        with st.chat_message("assistant"):
+            response_container = st.empty()
+            
+            try:
+                model = load_model()
+                # chat_log를 기반으로 요청 메시지 생성
+                gemini_messages = [
+                    {"role": translate_role_for_gemini(m["role"]), "parts": [m["content"]]} 
+                    for m in st.session_state.chat_log
+                ]
+                
+                # 스트리밍 요청
+                response = model.generate_content(gemini_messages, stream=True)
+                
+                # [결과] AI가 답변을 한 글자씩 타자 치듯 출력하여, 사용자가 기다리는 지루함을 덜어줍니다.
+                full_response = ""
+                for chunk in response:
+                    if chunk.text:
+                        full_response += chunk.text
+                        response_container.markdown(full_response)
+                
+                # [목적] 완성된 AI의 답변을 대화 기록에 저장하여, 다음 질문에서도 문맥을 기억하게 합니다.
+                st.session_state.chat_log.append({"role": "assistant", "content": full_response})
+
+            except Exception as e:
+                # 오류가 나면 빨간 글씨로 보여줍니다.
+                response_container.error(f"오류가 발생했습니다: {e}")
+                # 혹시 에러가 났을 때를 대비해 마지막 질문 기록을 지워 꼬임을 방지합니다.
+                st.session_state.chat_log.pop()

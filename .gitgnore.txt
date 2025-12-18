@@ -1,7 +1,10 @@
-# Secrets and API keys
-*.txt
+# Streamlit secrets file - DO NOT COMMIT
 .streamlit/secrets.toml
 
-# Python cache
-__pycache__/
+# Other secret files
+*.txt
 
+# Python cache & environments
+__pycache__/
+venv/
+.env
