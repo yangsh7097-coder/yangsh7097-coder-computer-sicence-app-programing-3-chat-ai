@@ -1,4 +1,12 @@
+# 가상환경 및 캐시 제외
 __pycache__/
-*.pyc
-.streamlit/secrets.toml
-.env
+.streamlit/
+*.csv
+*.txt
+
+# OS 및 시스템 파일 제외
+.DS_Store
+Thumbs.db
+AppData/
+feedback.csv
+check_models.py
