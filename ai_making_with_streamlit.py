@@ -253,7 +253,7 @@ with st.expander("📊 우리나라 지역별 인프라 현황 (클릭해서 탐
     tab_map, tab_bar, tab_compare, tab_table = st.tabs(["🗺️ 지도", "📊 막대그래프", "⚖️ 수도권 vs 비수도권", "📋 데이터 표"])
 
     with tab_map:
-        fig = px.scatter_mapbox(
+        fig = px.scatter_map(
             regional_data,
             lat="위도", lon="경도",
             size=selected_metric,
@@ -262,7 +262,7 @@ with st.expander("📊 우리나라 지역별 인프라 현황 (클릭해서 탐
             hover_name="지역",
             hover_data={"위도": False, "경도": False, selected_metric: True},
             zoom=6,
-            mapbox_style="carto-positron",
+            map_style="carto-positron",
             height=450,
             title=f"지역별 {selected_metric} 분포"
         )
