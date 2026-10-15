@@ -478,7 +478,11 @@ if prompt := st.chat_input("수도권 데이터에 대해 질문해 보세요!")
                 st.rerun()
 
             except Exception as e:
-                response_container.error(f"오류가 발생했습니다: {e}\n\n잠시 후 다시 시도해보거나 선생님께 알려주세요.")
+                err_str = str(e)
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
+                    response_container.warning("⏳ **AI 탐정이 잠시 숨을 고르고 있어요!**\n무료 이용 요청 한도(분당 5회)에 도달했습니다. 약 30초 후에 다시 질문해 주세요! 😊")
+                else:
+                    response_container.error(f"오류가 발생했습니다: {e}\n\n잠시 후 다시 시도해보거나 선생님께 알려주세요.")
                 if st.session_state.chat_log and st.session_state.chat_log[-1]["role"] == "user":
                     st.session_state.chat_log.pop()
 
