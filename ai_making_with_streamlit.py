@@ -120,8 +120,17 @@ SYSTEM_INSTRUCTION = """
 # --- 5. 모델 로드 ---
 @st.cache_resource
 def load_model():
+    # 최신 지원 모델인 gemini-3.8-flash 사용 (필요시 gemini-flash-latest로 fallback)
+    for model_name in ["gemini-3.8-flash", "gemini-flash-latest", "gemini-2.5-flash"]:
+        try:
+            return genai.GenerativeModel(
+                model_name=model_name,
+                system_instruction=SYSTEM_INSTRUCTION
+            )
+        except Exception:
+            continue
     return genai.GenerativeModel(
-        model_name="gemini-2.5-flash",
+        model_name="gemini-3.8-flash",
         system_instruction=SYSTEM_INSTRUCTION
     )
 
