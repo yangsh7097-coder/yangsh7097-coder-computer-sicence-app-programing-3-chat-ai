@@ -65,12 +65,12 @@ st.markdown("""
 # secrets.toml에 GOOGLE_API_KEY 또는 GEMINI_API_KEY로 저장
 api_key = None
 if "GOOGLE_API_KEY" in st.secrets:
-    api_key = st.secrets["GOOGLE_API_KEY"]
+    api_key = st.secrets["GOOGLE_API_KEY"].strip()
 elif "GEMINI_API_KEY" in st.secrets:
-    api_key = st.secrets["GEMINI_API_KEY"]
+    api_key = st.secrets["GEMINI_API_KEY"].strip()
 
 if api_key:
-    genai.configure(api_key=api_key)
+    genai.configure(api_key=api_key, transport="rest")
 else:
     st.error("⚠️ `.streamlit/secrets.toml`에 `GOOGLE_API_KEY = '여러분의키'` 를 설정해주세요.")
     st.stop()
@@ -481,6 +481,8 @@ if prompt := st.chat_input("수도권 데이터에 대해 질문해 보세요!")
                 err_str = str(e)
                 if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
                     response_container.warning("⏳ **AI 탐정이 잠시 숨을 고르고 있어요!**\n무료 이용 요청 한도(분당 5회)에 도달했습니다. 약 30초 후에 다시 질문해 주세요! 😊")
+                elif "API_KEY_INVALID" in err_str or "400" in err_str:
+                    response_container.error(f"🔑 **API 키 오류가 발생했습니다!**\n구글 AI Studio에서 발급받은 키가 유효한지 확인하거나, Streamlit을 완전히 껐다가 다시 켜보세요.\n\n상세 내용: {e}")
                 else:
                     response_container.error(f"오류가 발생했습니다: {e}\n\n잠시 후 다시 시도해보거나 선생님께 알려주세요.")
                 if st.session_state.chat_log and st.session_state.chat_log[-1]["role"] == "user":
