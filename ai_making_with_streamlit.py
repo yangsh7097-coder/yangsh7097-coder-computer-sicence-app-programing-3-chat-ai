@@ -62,17 +62,54 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- 3. API 키 설정 ---
-# secrets.toml에 GOOGLE_API_KEY 또는 GEMINI_API_KEY로 저장
+# 1) Streamlit Secrets, 2) 환경변수, 3) 로컬 .streamlit/secrets.toml 파일 직접 탐색
 api_key = None
-if "GOOGLE_API_KEY" in st.secrets:
-    api_key = st.secrets["GOOGLE_API_KEY"].strip()
-elif "GEMINI_API_KEY" in st.secrets:
-    api_key = st.secrets["GEMINI_API_KEY"].strip()
+
+# A. Streamlit st.secrets 탐색
+try:
+    if "GOOGLE_API_KEY" in st.secrets:
+        api_key = str(st.secrets["GOOGLE_API_KEY"]).strip()
+    elif "GEMINI_API_KEY" in st.secrets:
+        api_key = str(st.secrets["GEMINI_API_KEY"]).strip()
+except Exception:
+    pass
+
+# B. OS 환경변수 탐색
+if not api_key:
+    api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
+
+# C. 현재 스크립트 위치 기준 .streamlit/secrets.toml 직접 읽기
+if not api_key:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    possible_paths = [
+        os.path.join(script_dir, ".streamlit", "secrets.toml"),
+        os.path.join(os.getcwd(), ".streamlit", "secrets.toml"),
+        os.path.expanduser("~/.streamlit/secrets.toml")
+    ]
+    for p in possible_paths:
+        if os.path.exists(p):
+            try:
+                import toml
+                cfg = toml.load(p)
+                val = cfg.get("GOOGLE_API_KEY") or cfg.get("GEMINI_API_KEY")
+                if val:
+                    api_key = str(val).strip()
+                    break
+            except Exception:
+                pass
 
 if api_key:
     genai.configure(api_key=api_key, transport="rest")
 else:
-    st.error("⚠️ `.streamlit/secrets.toml`에 `GOOGLE_API_KEY = '여러분의키'` 를 설정해주세요.")
+    st.error("""
+    ⚠️ **API 키가 설정되지 않았습니다.**
+    
+    - **로컬 실행 시**: 프로젝트 폴더 안의 `.streamlit/secrets.toml` 파일에 키가 올바르게 입력되어 있는지 확인해주세요.
+    - **Streamlit 웹사이트 배포 시**: Streamlit Cloud 대시보드의 **App settings > Secrets** 에 아래와 같이 등록해주세요:
+    ```toml
+    GOOGLE_API_KEY = "발급받으신_Gemini_API_키"
+    ```
+    """)
     st.stop()
 
 # --- 4. 수업 시스템 프롬프트 (수업 지도안 전체 반영) ---
